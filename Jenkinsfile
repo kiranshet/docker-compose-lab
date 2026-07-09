@@ -1,5 +1,4 @@
-pipeline {
-    agent any
+pipeline { agent any
 
     environment {
         IMAGE_NAME = "kiran588/node-demo"
@@ -14,36 +13,43 @@ pipeline {
             }
         }
 
-        stage('Install Dependencies') {
-            steps {
-                sh 'npm install'
-            }
-        }
-
         stage('Build Docker Image') {
             steps {
-                sh 'docker build -t $IMAGE_NAME:$IMAGE_TAG .'
+                sh '''
+                docker build -t $IMAGE_NAME:$IMAGE_TAG .
+                '''
             }
         }
 
-        stage('Docker Login') {
+        stage('Push Docker Image') {
             steps {
                 withCredentials([usernamePassword(
-                    credentialsId: 'dockerhub',
+                    credentialsId: 'dockerhub-creds',
                     usernameVariable: 'USERNAME',
                     passwordVariable: 'PASSWORD'
                 )]) {
                     sh '''
                     echo $PASSWORD | docker login -u $USERNAME --password-stdin
+                    docker push $IMAGE_NAME:$IMAGE_TAG
                     '''
                 }
             }
         }
 
-        stage('Push Image') {
+        stage('Update Helm values.yaml') {
             steps {
-                sh 'docker push $IMAGE_NAME:$IMAGE_TAG'
+                sh '''
+                sed -i "s/tag:.*/tag: \\"$IMAGE_TAG\\"/" helm/values.yaml
+                echo "Updated values.yaml:"
+                grep tag helm/values.yaml
+                '''
             }
+        }
+    }
+
+    post {
+        success {
+            echo "Pipeline completed successfully!"
         }
     }
 }
