@@ -36,6 +36,27 @@ pipeline { agent any
             }
         }
 
+	stage('Helm Lint') {
+ 	   steps {
+        sh 'helm lint helm'
+    			}
+	}
+
+stage('Helm Package') {
+    steps {
+        sh 'helm package helm'
+    }
+}
+
+stage('Deploy to Kubernetes') {
+    steps {
+        sh '''
+        helm upgrade --install node-demo helm
+        '''
+    }
+}
+
+
         stage('Update Helm values.yaml') {
             steps {
                 sh '''
